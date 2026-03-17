@@ -164,6 +164,17 @@ body.dark-mode .event-title{color:var(--dark-text);}
 .btn-sm-danger{background:rgba(220,53,69,0.1);color:#dc3545;border:1px solid rgba(220,53,69,0.2);}
 .btn-sm-danger:hover{background:#dc3545;color:white;}
 
+/* COUNTDOWN TIMER */
+.event-countdown{margin:14px 0 0;background:linear-gradient(135deg,var(--navy),var(--navy-dark));border-radius:8px;padding:12px 10px 8px;display:flex;align-items:flex-start;justify-content:center;gap:0;}
+.event-countdown.expired{background:rgba(108,117,125,0.12);}
+.countdown-label{font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--gold);margin-bottom:6px;text-align:center;display:block;}
+.countdown-segments{display:flex;align-items:center;justify-content:center;gap:4px;width:100%;}
+.cd-seg{display:flex;flex-direction:column;align-items:center;min-width:44px;}
+.cd-num{font-size:1.4rem;font-weight:800;color:var(--gold);line-height:1;font-variant-numeric:tabular-nums;}
+.cd-unit{font-size:0.58rem;font-weight:600;text-transform:uppercase;color:rgba(255,255,255,0.55);letter-spacing:0.5px;margin-top:3px;}
+.cd-sep{font-size:1.3rem;font-weight:700;color:var(--gold-light);padding:0 0 6px;line-height:1.2;opacity:0.6;}
+.countdown-expired-txt{font-size:0.8rem;font-weight:600;color:rgba(108,117,125,0.8);text-align:center;width:100%;padding:4px 0;}
+
 /* TEAM */
 #team{background:var(--white);}
 body.dark-mode #team{background:var(--dark-surface);}
@@ -729,8 +740,8 @@ const DEF = {
     {icon:"fa-lightbulb", title:"Innovation", desc:"Fostering innovative thinking and entrepreneurial mindset in financial solutions"}
   ],
   events: [
-    {title:"Annual Finance Summit 2025", date:"March 15, 2025", status:"Upcoming", desc:"Join us for our flagship annual summit featuring keynote speakers from leading financial institutions, panel discussions, and networking opportunities.", grad:"linear-gradient(135deg,#1B3A5C,#2a5a8c)", icon:"fa-calendar-check"},
-    {title:"Stock Market Workshop", date:"February 28, 2025", status:"Upcoming", desc:"An intensive hands-on workshop on stock market analysis, technical charting, and trading strategies led by experienced market professionals.", grad:"linear-gradient(135deg,#C9A84C,#8a6920)", icon:"fa-chart-line"},
+    {title:"Annual Finance Summit 2026", date:"June 15, 2026", status:"Upcoming", desc:"Join us for our flagship annual summit featuring keynote speakers from leading financial institutions, panel discussions, and networking opportunities.", grad:"linear-gradient(135deg,#1B3A5C,#2a5a8c)", icon:"fa-calendar-check"},
+    {title:"Stock Market Workshop", date:"May 10, 2026", status:"Upcoming", desc:"An intensive hands-on workshop on stock market analysis, technical charting, and trading strategies led by experienced market professionals.", grad:"linear-gradient(135deg,#C9A84C,#8a6920)", icon:"fa-chart-line"},
     {title:"Alumni Networking Night", date:"January 20, 2025", status:"Past", desc:"A hugely successful networking event that connected current students with over 50 distinguished alumni working across banking, consulting, and investment sectors.", grad:"linear-gradient(135deg,#2c7a4b,#1a4a2c)", icon:"fa-users"}
   ],
   team: [
@@ -876,6 +887,7 @@ function renderEvents(){
         <div class="event-title" data-editable data-ev-idx="${i}" data-ev-field="title">${ev.title}</div>
         <div class="event-date"><i class="fa fa-calendar-alt"></i> <span data-editable data-ev-idx="${i}" data-ev-field="date">${ev.date}</span></div>
         <div class="event-desc" data-editable data-ev-idx="${i}" data-ev-field="desc">${ev.desc}</div>
+        ${ev.status.toLowerCase() === 'upcoming' ? `<div class="event-countdown" data-target="${escapeHtml(ev.date)}"><span class="countdown-label"><i class="fa fa-clock"></i> Time Until Event</span><div class="countdown-segments"><div class="cd-seg"><span class="cd-num" data-cd="days">--</span><span class="cd-unit">Days</span></div><span class="cd-sep">:</span><div class="cd-seg"><span class="cd-num" data-cd="hours">--</span><span class="cd-unit">Hours</span></div><span class="cd-sep">:</span><div class="cd-seg"><span class="cd-num" data-cd="mins">--</span><span class="cd-unit">Mins</span></div><span class="cd-sep">:</span><div class="cd-seg"><span class="cd-num" data-cd="secs">--</span><span class="cd-unit">Secs</span></div></div></div>` : ''}
         <div class="event-actions">
           <button class="btn-sm btn-sm-primary"><i class="fa fa-info-circle"></i> Learn More</button>
           <button class="btn-sm btn-sm-danger edit-only" onclick="deleteEvent(${i})"><i class="fa fa-trash"></i> Delete</button>
@@ -884,6 +896,7 @@ function renderEvents(){
     </div>`
   ).join('') +
   `<div class="add-card-btn" onclick="addEvent()"><i class="fa fa-plus"></i> Add Event</div>`;
+  initCountdowns();
 }
 
 function deleteEvent(i){ D.events.splice(i,1); renderEvents(); applyEditMode(); }
@@ -1127,6 +1140,34 @@ function notify(msg){
 }
 
 function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let _cdInterval = null;
+function initCountdowns(){
+  if(_cdInterval) clearInterval(_cdInterval);
+  function tick(){
+    document.querySelectorAll('.event-countdown[data-target]').forEach(function(el){
+      const target = new Date(el.getAttribute('data-target'));
+      if(isNaN(target)) return;
+      const diff = target - Date.now();
+      if(diff <= 0){
+        el.classList.add('expired');
+        el.innerHTML = '<span class="countdown-expired-txt"><i class="fa fa-check-circle"></i> This event has passed</span>';
+        return;
+      }
+      const days  = Math.floor(diff / 86400000);
+      const hours = Math.floor((diff % 86400000) / 3600000);
+      const mins  = Math.floor((diff % 3600000) / 60000);
+      const secs  = Math.floor((diff % 60000) / 1000);
+      const pad = n => String(n).padStart(2,'0');
+      el.querySelector('[data-cd="days"]').textContent  = String(days);
+      el.querySelector('[data-cd="hours"]').textContent = pad(hours);
+      el.querySelector('[data-cd="mins"]').textContent  = pad(mins);
+      el.querySelector('[data-cd="secs"]').textContent  = pad(secs);
+    });
+  }
+  tick();
+  _cdInterval = setInterval(tick, 1000);
+}
 
 function initFadeIn(){
   const obs = new IntersectionObserver((entries) => {
