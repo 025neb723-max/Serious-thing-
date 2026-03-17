@@ -753,12 +753,24 @@ const DEF = {
 let D = deepCopy(DEF);
 let editMode = false;
 
+/** Deep-copies plain JSON-serialisable objects (no functions, Dates, or circular refs). */
 function deepCopy(o){ return JSON.parse(JSON.stringify(o)); }
 
 function loadFromStorage(){
   try {
     const raw = localStorage.getItem('sxc2f_data');
-    if(raw){ const saved = JSON.parse(raw); D = deepCopy(DEF); mergeDeep(D, saved); }
+    if(raw){
+      let saved;
+      try { saved = JSON.parse(raw); }
+      catch(parseErr){
+        console.warn('SXC2F: saved data was corrupted and could not be loaded. Reverting to defaults.', parseErr);
+        localStorage.removeItem('sxc2f_data');
+        D = deepCopy(DEF);
+        return;
+      }
+      D = deepCopy(DEF);
+      mergeDeep(D, saved);
+    }
   } catch(e){ D = deepCopy(DEF); }
 }
 
@@ -826,7 +838,7 @@ function renderAnnEditor(){
   const list = document.getElementById('ann-list');
   list.innerHTML = D.announcements.map((a,i) =>
     `<div class="ann-row">
-      <input type="text" value="${escH(a)}" onchange="D.announcements[${i}]=this.value;renderAnnouncements()">
+      <input type="text" value="${escapeHtml(a)}" onchange="D.announcements[${i}]=this.value;renderAnnouncements()">
       <button class="ann-del" onclick="D.announcements.splice(${i},1);renderAnnouncements()"><i class="fa fa-trash"></i></button>
     </div>`
   ).join('');
@@ -1001,6 +1013,9 @@ function closeModal(){
 
 function submitPwd(){
   const v = document.getElementById('pwd-input').value;
+  // NOTE: Password is intentionally stored client-side — this is a static site with no backend.
+  // It acts as a lightweight UI gate, not a cryptographic secret. Anyone with source access
+  // could bypass it; for higher security, host behind a server-authenticated admin route.
   if(v === 'sxc2f2025'){
     closeModal();
     enterEdit();
@@ -1103,7 +1118,7 @@ function notify(msg){
   setTimeout(() => n.classList.remove('show'), 3000);
 }
 
-function escH(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function initFadeIn(){
   const obs = new IntersectionObserver((entries) => {
