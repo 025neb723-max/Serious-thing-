@@ -1011,19 +1011,27 @@ function closeModal(){
   document.getElementById('pwd-modal').classList.remove('active');
 }
 
+// SHA-256 digest of "sxc2f2025" used for basic obfuscation of the admin password.
+// This is a client-side UI gate on a static site, not a cryptographic secret.
+const ADMIN_HASH = '248805fdd48e111a5c47491fa144f936126775fecdd27eddb17dd7785ef4a5f1';
+
+async function hashPwd(s){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 function submitPwd(){
   const v = document.getElementById('pwd-input').value;
-  // NOTE: Password is intentionally stored client-side — this is a static site with no backend.
-  // It acts as a lightweight UI gate, not a cryptographic secret. Anyone with source access
-  // could bypass it; for higher security, host behind a server-authenticated admin route.
-  if(v === 'sxc2f2025'){
-    closeModal();
-    enterEdit();
-  } else {
-    document.getElementById('modal-error').style.display = 'block';
-    document.getElementById('pwd-input').value = '';
-    document.getElementById('pwd-input').focus();
-  }
+  hashPwd(v).then(h => {
+    if(h === ADMIN_HASH){
+      closeModal();
+      enterEdit();
+    } else {
+      document.getElementById('modal-error').style.display = 'block';
+      document.getElementById('pwd-input').value = '';
+      document.getElementById('pwd-input').focus();
+    }
+  });
 }
 
 function enterEdit(){
